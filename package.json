@@ -1,0 +1,50 @@
+{
+  "name": "snugjs",
+  "version": "0.0.0",
+  "description": "Create reactive web components using generators and signals.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/clebert/snugjs.git"
+  },
+  "license": "MIT",
+  "author": "Clemens Akens",
+  "type": "module",
+  "exports": "./lib/mod.js",
+  "types": "./lib/mod.d.ts",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "prepare": "node onecfg.js",
+    "ci": "run-p compile:check compile:emit format:check lint",
+    "postci": "size-limit",
+    "compile:check": "tsc --pretty",
+    "compile:emit": "tsc --pretty --project tsconfig.emit.json",
+    "format:check": "prettier --check .",
+    "format:write": "prettier --write .",
+    "lint": "eslint .",
+    "release": "npm version",
+    "postrelease": "git push --follow-tags"
+  },
+  "devDependencies": {
+    "@onecfg/standard": "^6.5.1",
+    "@size-limit/preset-small-lib": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.32.0",
+    "@typescript-eslint/parser": "^5.32.0",
+    "eslint": "^8.21.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-markdown": "^3.0.0",
+    "npm-run-all": "^4.1.5",
+    "onecfg": "^5.2.1",
+    "prettier": "^2.7.1",
+    "size-limit": "^8.0.0",
+    "typescript": "^4.7.4"
+  },
+  "size-limit": [
+    {
+      "limit": "1.31 kB",
+      "path": "./lib/mod.js"
+    }
+  ]
+}

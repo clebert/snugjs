@@ -1,8 +1,10 @@
 export * from './custom-element.js';
 export * from './fragment.js';
 export * from './h.js';
+export * from './object-store.js';
 export * from './props.js';
 export * from './race.js';
+export * from './store.js';
 export * from './subject.js';
 
 declare global {

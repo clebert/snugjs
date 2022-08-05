@@ -8,7 +8,7 @@ export function h<TProps extends object>(
 export function h<TAttributeName extends keyof JSX.IntrinsicElements>(
   tag: TAttributeName,
   attributes: JSX.IntrinsicElements[TAttributeName],
-  ...children: JSX.ElementChild[]
+  ...children: readonly JSX.ElementChild[]
 ): HTMLElementTagNameMap[TAttributeName];
 
 export function h(

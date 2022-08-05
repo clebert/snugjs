@@ -43,7 +43,7 @@
   },
   "size-limit": [
     {
-      "limit": "1.31 kB",
+      "limit": "1.42 kB",
       "path": "./lib/mod.js"
     }
   ]

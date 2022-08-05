@@ -1,5 +1,5 @@
 export function race(
-  ...signals: [AbortSignal, AbortSignal, ...AbortSignal[]]
+  ...signals: readonly [AbortSignal, AbortSignal, ...AbortSignal[]]
 ): AbortSignal {
   const controller = new AbortController();
 

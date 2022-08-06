@@ -8,6 +8,7 @@
   },
   "license": "MIT",
   "author": "Clemens Akens",
+  "sideEffects": false,
   "type": "module",
   "exports": "./lib/mod.js",
   "types": "./lib/mod.d.ts",

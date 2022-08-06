@@ -1,3 +1,4 @@
+import {Children} from './children.js';
 import {Props} from './props.js';
 
 export type ComponentFunction<TProps extends object> = (
@@ -8,6 +9,7 @@ export type ComponentFunction<TProps extends object> = (
 export interface ComponentFunctionInit<TProps extends object> {
   readonly activeSignal: AbortSignal;
   readonly props: Props<TProps>;
+  readonly children: Children;
 }
 
 export type Component =
@@ -15,7 +17,7 @@ export type Component =
   | Generator<() => AbortSignal, void, undefined>;
 
 export type CustomElementFunction<TProps extends object> = (
-  props: TProps & {readonly key?: object; readonly children?: void},
+  props: TProps & {readonly key?: object},
 ) => JSX.Element;
 
 export class CustomElement<TProps extends object> extends HTMLElement {
@@ -77,6 +79,7 @@ export class CustomElement<TProps extends object> extends HTMLElement {
     const component = this.#componentFunction.call(this, {
       activeSignal,
       props: new Props<TProps>({element: this, activeSignal}),
+      children: new Children({element: this, activeSignal}),
     });
 
     const errorEventName = `customelementerror`;

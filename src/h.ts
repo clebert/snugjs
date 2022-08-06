@@ -1,9 +1,4 @@
-import type {CustomElement, CustomElementFunction} from './custom-element.js';
-
-export function h<TProps extends object>(
-  tag: CustomElementFunction<TProps>,
-  attributes: TProps & {readonly key?: object; readonly children?: void},
-): CustomElement<TProps>;
+import type {CustomElementFunction} from './custom-element.js';
 
 export function h<TAttributeName extends keyof JSX.IntrinsicElements>(
   tag: TAttributeName,
@@ -43,7 +38,7 @@ export function h(
     }
   }
 
-  if (!isCustomElement) {
+  if (children.length > 0) {
     element.replaceChildren(sanitizeChildren(children));
   }
 
@@ -67,7 +62,7 @@ function sanitizeChildren(children: readonly unknown[]): DocumentFragment {
       child instanceof DocumentFragment
     ) {
       fragment.appendChild(child);
-    } else if (child != null && child !== false) {
+    } else if (typeof child === `string` || typeof child === `number`) {
       fragment.append(String(child));
     }
   }

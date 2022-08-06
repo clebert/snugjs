@@ -1,6 +1,4 @@
-export function race(
-  ...signals: readonly [AbortSignal, AbortSignal, ...AbortSignal[]]
-): AbortSignal {
+export function race(...signals: readonly AbortSignal[]): AbortSignal {
   const controller = new AbortController();
 
   for (const signal of signals) {

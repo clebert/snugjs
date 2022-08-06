@@ -17,7 +17,10 @@ export type Component =
   | Generator<() => AbortSignal, void, undefined>;
 
 export type CustomElementFunction<TProps extends object> = (
-  props: TProps & {readonly key?: object},
+  props: TProps & {
+    readonly key?: object;
+    readonly children?: JSX.ElementChild | readonly JSX.ElementChild[];
+  },
 ) => JSX.Element;
 
 export class CustomElement<TProps extends object> extends HTMLElement {

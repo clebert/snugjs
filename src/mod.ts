@@ -1,3 +1,4 @@
+export * from './children.js';
 export * from './custom-element.js';
 export * from './fragment.js';
 export * from './h.js';

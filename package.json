@@ -1,6 +1,6 @@
 {
   "name": "snugjs",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Create reactive web components using generators and signals.",
   "repository": {
     "type": "git",

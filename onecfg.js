@@ -3,11 +3,14 @@ import {
   eslint,
   git,
   github,
+  jest,
   node,
   npm,
   prettier,
+  swc,
   typescript,
   vscode,
+  wallaby,
 } from '@onecfg/standard';
 import {mergeContent, writeFiles} from 'onecfg';
 
@@ -18,11 +21,14 @@ writeFiles(
   ...eslint(),
   ...git(),
   ...github(),
+  ...jest({noCoverage: true}),
   ...node({nodeVersion: `18`}),
   ...npm(),
   ...prettier(),
+  ...swc({target}),
   ...typescript({target, emit: true}),
   ...vscode({includeFilesInExplorer: false}),
+  ...wallaby(),
 
   mergeContent(npm.packageFile, {scripts: {postci: `size-limit`}}),
 );

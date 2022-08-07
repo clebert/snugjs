@@ -1,10 +1,20 @@
 import type {CustomElementFunction} from './custom-element.js';
 
-export function h<TAttributeName extends keyof JSX.IntrinsicElements>(
-  tag: TAttributeName,
-  attributes: JSX.IntrinsicElements[TAttributeName],
+export function h<TProps extends object>(
+  tag: CustomElementFunction<TProps>,
+  attributes: Omit<TProps & {readonly key?: object}, 'children'>,
+  ...children: 'children' extends {
+    [TKey in keyof TProps]-?: {} extends Pick<TProps, TKey> ? never : TKey;
+  }[keyof TProps]
+    ? readonly [JSX.ElementChild, ...JSX.ElementChild[]]
+    : readonly JSX.ElementChild[]
+): HTMLElement;
+
+export function h<TTagName extends keyof JSX.IntrinsicElements>(
+  tag: TTagName,
+  attributes: JSX.IntrinsicElements[TTagName],
   ...children: readonly JSX.ElementChild[]
-): HTMLElementTagNameMap[TAttributeName];
+): HTMLElementTagNameMap[TTagName];
 
 export function h(
   tag: CustomElementFunction<any> | string,

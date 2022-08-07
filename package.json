@@ -17,25 +17,31 @@
   ],
   "scripts": {
     "prepare": "node onecfg.js",
-    "ci": "run-p compile:check compile:emit format:check lint",
+    "ci": "run-p compile:check compile:emit format:check lint test",
     "postci": "size-limit",
     "compile:check": "tsc --pretty",
     "compile:emit": "tsc --pretty --project tsconfig.emit.json",
     "format:check": "prettier --check .",
     "format:write": "prettier --write .",
     "lint": "eslint .",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --silent --passWithNoTests",
     "release": "npm version",
     "postrelease": "git push --follow-tags"
   },
   "devDependencies": {
+    "@jest/globals": "^28.1.3",
     "@onecfg/standard": "^6.5.1",
     "@size-limit/preset-small-lib": "^8.0.0",
+    "@swc/core": "^1.2.224",
+    "@swc/jest": "^0.2.22",
     "@typescript-eslint/eslint-plugin": "^5.32.0",
     "@typescript-eslint/parser": "^5.32.0",
     "eslint": "^8.21.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-markdown": "^3.0.0",
+    "jest": "^28.1.3",
+    "jest-environment-jsdom": "^28.1.3",
     "npm-run-all": "^4.1.5",
     "onecfg": "^5.2.1",
     "prettier": "^2.7.1",
@@ -47,5 +53,12 @@
       "limit": "1.5 kB",
       "path": "./lib/mod.js"
     }
-  ]
+  ],
+  "wallaby": {
+    "env": {
+      "params": {
+        "runner": "--experimental-vm-modules"
+      }
+    }
+  }
 }

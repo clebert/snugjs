@@ -2,9 +2,13 @@
 .editorconfig
 .eslintrc.json
 .eslintignore
+jest.config.json
+coverage
 node_modules
 .prettierrc.json
 .prettierignore
+.swc
+.swcrc
 tsconfig.json
 tsconfig.eslint.json
 tsconfig.emit.json

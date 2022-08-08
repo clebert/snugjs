@@ -5,19 +5,25 @@ export * from './h.js';
 export * from './permanent-store.js';
 export * from './props.js';
 export * from './race.js';
+export * from './ref.js';
 export * from './store.js';
 export * from './subject.js';
 
 declare global {
   namespace JSX {
-    type Element = HTMLElement | DocumentFragment | string;
-    type ElementChild = Element | number | false | undefined | null;
+    type Element = HTMLElement | DocumentFragment;
 
     interface ElementChildrenAttribute {
-      children?: ElementChild | ElementChild[];
+      children?: {};
     }
 
-    interface IntrinsicElement extends ElementChildrenAttribute {
+    interface ElementKeyAttribute {
+      key?: object;
+    }
+
+    interface IntrinsicElement
+      extends ElementChildrenAttribute,
+        ElementKeyAttribute {
       /** Keyboard shortcut to activate or focus element */
       accesskey?: string;
       /** Recommended autocapitalization behavior (for supported input methods) */

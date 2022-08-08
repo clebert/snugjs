@@ -21,7 +21,7 @@ writeFiles(
   ...eslint(),
   ...git(),
   ...github(),
-  ...jest({noCoverage: true}),
+  ...jest(),
   ...node({nodeVersion: `18`}),
   ...npm(),
   ...prettier(),
@@ -31,4 +31,17 @@ writeFiles(
   ...wallaby(),
 
   mergeContent(npm.packageFile, {scripts: {postci: `size-limit`}}),
+
+  mergeContent(swc.configFile, {
+    jsc: {
+      parser: {tsx: true},
+      transform: {react: {pragma: `h`, pragmaFrag: `Fragment`}},
+    },
+  }),
+
+  ...typescript.mergeCompilerOptions({
+    jsx: `react`,
+    jsxFactory: `h`,
+    jsxFragmentFactory: `Fragment`,
+  }),
 );

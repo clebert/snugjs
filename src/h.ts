@@ -1,64 +1,125 @@
 import type {CustomElementFunction} from './custom-element.js';
+import type {PropsValue} from './props.js';
 
-export function h<TProps extends object>(
-  tag: CustomElementFunction<TProps>,
-  attributes: Omit<TProps & {readonly key?: object}, 'children'>,
-  ...children: 'children' extends {
-    [TKey in keyof TProps]-?: {} extends Pick<TProps, TKey> ? never : TKey;
-  }[keyof TProps]
-    ? readonly [JSX.ElementChild, ...JSX.ElementChild[]]
-    : readonly JSX.ElementChild[]
-): HTMLElement;
+export type Tag = string | CustomElementFunction<{}>;
 
 export function h<TTagName extends keyof JSX.IntrinsicElements>(
   tag: TTagName,
-  attributes: JSX.IntrinsicElements[TTagName],
-  ...children: readonly JSX.ElementChild[]
+  attributes: JSX.IntrinsicElements[TTagName] & {readonly key?: object},
+  ...children: readonly any[]
 ): HTMLElementTagNameMap[TTagName];
 
+export function h<TPropsValue extends PropsValue>(
+  tag: CustomElementFunction<TPropsValue>,
+  attributes: TPropsValue & {readonly key?: object},
+  ...children: readonly any[]
+): JSX.Element;
+
 export function h(
-  tag: CustomElementFunction<any> | string,
+  tag: Tag,
   attributes: object | null,
   ...children: readonly unknown[]
 ): JSX.Element {
+  const key = attributes ? getKey(attributes) : undefined;
+  const cacheEntry = key ? h.cache.get(key) : undefined;
+
+  if (cacheEntry && cacheEntry.tag !== tag) {
+    throw new Error(
+      `Cannot reuse the same key for different types of elements.`,
+    );
+  }
+
   const isTagName = typeof tag === `string`;
 
-  const element = isTagName
+  const element = cacheEntry
+    ? cacheEntry.element
+    : isTagName
     ? document.createElement(tag)
-    : tag({key: attributes ? getKey(attributes) : undefined});
-
-  if (typeof element === `string`) {
-    return element;
-  }
+    : (tag as () => JSX.Element)();
 
   const isFragment = element instanceof DocumentFragment;
+
+  if (!isFragment && key && !cacheEntry) {
+    h.cache.set(key, {tag, element});
+  }
+
   const isCustomElement = !isTagName && !isFragment;
 
-  if (attributes && !isFragment) {
-    for (const [key, value] of Object.entries(attributes)) {
-      if (isCustomElement) {
-        if (value != null && key !== `key` && key !== `children`) {
-          element.setAttribute(key, JSON.stringify(value));
-        }
-      } else if (typeof value === `string` || typeof value === `number`) {
-        element.setAttribute(key, String(value));
-      } else if (value === true) {
-        element.setAttribute(key, ``);
-      }
-    }
+  if (!isFragment) {
+    replaceAttributes(element, isCustomElement, attributes);
   }
 
-  if (children.length > 0) {
-    element.replaceChildren(sanitizeChildren(children));
-  }
+  element.replaceChildren(sanitizeChildren(children));
 
   return element;
 }
 
+h.cache = new WeakMap<object, Readonly<{tag: Tag; element: HTMLElement}>>();
+
 function getKey(attributes: object): object | undefined {
-  const key = (attributes as any).key as unknown;
+  const key = (attributes as Record<string, unknown>).key;
 
   return key && typeof key === `object` ? key : undefined;
+}
+
+function replaceAttributes(
+  element: HTMLElement,
+  isCustomElement: boolean,
+  attributes: object | null,
+): void {
+  for (const attributeName of element.getAttributeNames()) {
+    element.removeAttribute(attributeName);
+  }
+
+  if (!attributes) {
+    return;
+  }
+
+  for (const [attributeName, attributeValue] of Object.entries(attributes)) {
+    if (attributeName === `key`) {
+      continue;
+    }
+
+    switch (typeof attributeValue) {
+      case `boolean`: {
+        if (isCustomElement) {
+          element.setAttribute(attributeName, String(attributeValue));
+        } else if (attributeValue === true) {
+          element.setAttribute(attributeName, ``);
+        }
+
+        break;
+      }
+      case `number`: {
+        if (Number.isFinite(attributeValue)) {
+          element.setAttribute(attributeName, String(attributeValue));
+        } else {
+          throw new Error(
+            `Cannot set a non-finite number value for the "${attributeName}" attribute.`,
+          );
+        }
+
+        break;
+      }
+      case `string`: {
+        if (isCustomElement) {
+          element.setAttribute(attributeName, JSON.stringify(attributeValue));
+        } else {
+          element.setAttribute(attributeName, attributeValue);
+        }
+
+        break;
+      }
+      case `undefined`: {
+        break;
+      }
+      default: {
+        throw new Error(
+          `Cannot set an illegal value for the "${attributeName}" attribute.`,
+        );
+      }
+    }
+  }
 }
 
 function sanitizeChildren(children: readonly unknown[]): DocumentFragment {

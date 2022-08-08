@@ -1,65 +1,49 @@
 import {Children} from './children.js';
+import type {PropsValue} from './props.js';
 import {Props} from './props.js';
 
-export type ComponentFunction<TProps extends object> = (
+export type ComponentFunction<TPropsValue extends PropsValue> = (
   this: HTMLElement,
-  init: ComponentFunctionInit<TProps>,
+  init: ComponentFunctionInit<TPropsValue>,
 ) => Component;
 
-export interface ComponentFunctionInit<TProps extends object> {
+export interface ComponentFunctionInit<TPropsValue extends PropsValue> {
   readonly activeSignal: AbortSignal;
-  readonly props: Props<TProps>;
+  readonly props: Props<TPropsValue>;
   readonly children: Children;
 }
 
 export type Component =
-  | AsyncGenerator<() => AbortSignal, void, undefined>
-  | Generator<() => AbortSignal, void, undefined>;
+  | AsyncGenerator<AbortSignal, void, undefined>
+  | Generator<AbortSignal, void, undefined>;
 
-export type CustomElementFunction<TProps extends object> = (
-  props: TProps & {
+export type CustomElementFunction<TPropsValue extends PropsValue> = (
+  props: TPropsValue & {
     readonly key?: object;
-    readonly children?: JSX.ElementChild | readonly JSX.ElementChild[];
+    readonly children?: readonly any[];
   },
 ) => JSX.Element;
 
-export class CustomElement<TProps extends object> extends HTMLElement {
-  static define<TProps extends object>(
+export class CustomElement<TPropsValue extends PropsValue> extends HTMLElement {
+  static define<TPropsValue extends PropsValue>(
     customElementName: string,
-    componentFunction: ComponentFunction<TProps>,
-  ): CustomElementFunction<TProps> {
+    componentFunction: ComponentFunction<TPropsValue>,
+  ): CustomElementFunction<TPropsValue> {
     customElements.define(
       customElementName,
-      class extends CustomElement<TProps> {
+      class extends CustomElement<TPropsValue> {
         constructor() {
           super(componentFunction);
         }
       },
     );
 
-    const elements = new WeakMap<object, JSX.Element>();
-
-    return ({key}) => {
-      if (!key) {
-        return document.createElement(customElementName);
-      }
-
-      let element = elements.get(key);
-
-      if (!element) {
-        elements.set(
-          key,
-          (element = document.createElement(customElementName)),
-        );
-      }
-
-      return element;
-    };
+    return () => document.createElement(customElementName);
   }
 
-  readonly #componentFunction: ComponentFunction<TProps>;
+  readonly #componentFunction: ComponentFunction<TPropsValue>;
 
-  constructor(componentFunction: ComponentFunction<TProps>) {
+  constructor(componentFunction: ComponentFunction<TPropsValue>) {
     super();
 
     this.#componentFunction = componentFunction;
@@ -81,7 +65,7 @@ export class CustomElement<TProps extends object> extends HTMLElement {
 
     const component = this.#componentFunction.call(this, {
       activeSignal,
-      props: new Props<TProps>({element: this, activeSignal}),
+      props: new Props<TPropsValue>({element: this, activeSignal}),
       children: new Children({element: this, activeSignal}),
     });
 
@@ -139,26 +123,18 @@ async function run(component: Component): Promise<void> {
       return;
     }
 
-    let signal: AbortSignal | undefined;
+    const signal = result.value;
 
-    try {
-      signal = result.value();
-    } catch (error) {
-      await component.throw(error);
-    }
+    if (!signal.aborted) {
+      infiniteLoop = false;
 
-    if (signal) {
-      if (!signal.aborted) {
-        infiniteLoop = false;
-
-        await new Promise<void>((resolve) =>
-          signal!.addEventListener(`abort`, () => resolve(), {once: true}),
-        );
-      } else if (!infiniteLoop) {
-        infiniteLoop = true;
-      } else {
-        await component.throw(new Error(`Infinite loop detected.`));
-      }
+      await new Promise<void>((resolve) =>
+        signal.addEventListener(`abort`, () => resolve(), {once: true}),
+      );
+    } else if (!infiniteLoop) {
+      infiniteLoop = true;
+    } else {
+      await component.throw(new Error(`Infinite loop detected.`));
     }
   }
 }

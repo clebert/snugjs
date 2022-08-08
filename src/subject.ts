@@ -1,19 +1,19 @@
 export class Subject {
-  #currentController: AbortController | undefined;
+  #currentController = new AbortController();
+  #nextController = new AbortController();
 
   get currentSignal(): AbortSignal {
-    if (!this.#currentController) {
-      this.#currentController = new AbortController();
-    }
-
     return this.#currentController.signal;
   }
 
-  protected abort(): void {
-    if (this.#currentController) {
-      const currentController = this.#currentController;
-      this.#currentController = undefined;
-      currentController.abort();
-    }
+  get nextSignal(): AbortSignal {
+    return this.#nextController.signal;
+  }
+
+  abort(): void {
+    const previousController = this.#currentController;
+    this.#currentController = this.#nextController;
+    this.#nextController = new AbortController();
+    previousController.abort();
   }
 }

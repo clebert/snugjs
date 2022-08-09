@@ -1,6 +1,5 @@
+import type {PropsValue} from './h.js';
 import {Subject} from './subject.js';
-
-export type PropsValue = Record<string, boolean | number | string | undefined>;
 
 export interface PropsInit {
   readonly element: HTMLElement;

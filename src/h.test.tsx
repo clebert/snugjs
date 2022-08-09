@@ -3,8 +3,8 @@
  */
 
 import {describe, expect, test} from '@jest/globals';
-import type {CustomElementFunction} from './custom-element.js';
 import {Fragment} from './fragment.js';
+import type {CustomElementFunction} from './h.js';
 import {h} from './h.js';
 
 describe(`h()`, () => {
@@ -89,19 +89,22 @@ describe(`h()`, () => {
 
     test(`children are replaced`, () => {
       const key = {};
+      const element = <a key={key}>foo</a>;
 
-      const element = (
-        <a key={key}>
-          <span />
-          foo
-          {`bar`}
-          {false}
-          {0}
-          {null}
-          {undefined}
-          {[<div />, [`baz`, true, 42, null, undefined]]}
-        </a>
-      );
+      expect(element.childNodes).toHaveLength(1);
+      expect(element.childNodes[0]!.nodeType).toBe(document.TEXT_NODE);
+      expect(element.childNodes[0]!.textContent).toBe(`foo`);
+
+      <a key={key}>
+        <span />
+        foo
+        {`bar`}
+        {false}
+        {0}
+        {null}
+        {undefined}
+        {[<div />, [`baz`, true, 42, null, undefined]]}
+      </a>;
 
       expect(element.childNodes).toHaveLength(7);
       expect(element.childNodes[0]!.nodeType).toBe(document.ELEMENT_NODE);
@@ -243,19 +246,22 @@ describe(`h()`, () => {
         document.createElement(`x-test`);
 
       const key = {};
+      const element = <Test key={key}>foo</Test>;
 
-      const element = (
-        <Test key={key}>
-          <span />
-          foo
-          {`bar`}
-          {false}
-          {0}
-          {null}
-          {undefined}
-          {[<div />, [`baz`, true, 42, null, undefined]]}
-        </Test>
-      );
+      expect(element.childNodes).toHaveLength(1);
+      expect(element.childNodes[0]!.nodeType).toBe(document.TEXT_NODE);
+      expect(element.childNodes[0]!.textContent).toBe(`foo`);
+
+      <Test key={key}>
+        <span />
+        foo
+        {`bar`}
+        {false}
+        {0}
+        {null}
+        {undefined}
+        {[<div />, [`baz`, true, 42, null, undefined]]}
+      </Test>;
 
       expect(element.childNodes).toHaveLength(7);
       expect(element.childNodes[0]!.nodeType).toBe(document.ELEMENT_NODE);

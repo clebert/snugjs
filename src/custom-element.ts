@@ -1,5 +1,5 @@
 import {Children} from './children.js';
-import type {PropsValue} from './props.js';
+import type {CustomElementFunction, PropsValue} from './h.js';
 import {Props} from './props.js';
 
 export type ComponentFunction<TPropsValue extends PropsValue> = (
@@ -16,13 +16,6 @@ export interface ComponentFunctionInit<TPropsValue extends PropsValue> {
 export type Component =
   | AsyncGenerator<AbortSignal, void, undefined>
   | Generator<AbortSignal, void, undefined>;
-
-export type CustomElementFunction<TPropsValue extends PropsValue> = (
-  props: TPropsValue & {
-    readonly key?: object;
-    readonly children?: readonly any[];
-  },
-) => JSX.Element;
 
 export class CustomElement<TPropsValue extends PropsValue> extends HTMLElement {
   static define<TPropsValue extends PropsValue>(

@@ -1,5 +1,8 @@
-import type {CustomElementFunction} from './custom-element.js';
-import type {PropsValue} from './props.js';
+export type PropsValue = Record<string, boolean | number | string | undefined>;
+
+export type CustomElementFunction<TPropsValue extends PropsValue = {}> = (
+  props: TPropsValue & JSX.ElementChildrenAttribute & JSX.ElementKeyAttribute,
+) => JSX.Element;
 
 export type Tag = string | CustomElementFunction<{}>;
 

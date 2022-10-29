@@ -30,18 +30,16 @@ writeFiles(
   ...vscode({includeFilesInExplorer: false}),
   ...wallaby(),
 
+  mergeContent(jest.configFile, {clearMocks: true}),
   mergeContent(npm.packageFile, {scripts: {postci: `size-limit`}}),
 
-  mergeContent(swc.configFile, {
-    jsc: {
-      parser: {tsx: true},
-      transform: {react: {pragma: `h`, pragmaFrag: `Fragment`}},
-    },
+  mergeContent(prettier.configFile, {
+    overrides: [
+      {files: `*.test.ts`, options: {printWidth: 120}},
+      {files: `*.test.tsx`, options: {printWidth: 120}},
+    ],
   }),
 
-  ...typescript.mergeCompilerOptions({
-    jsx: `react`,
-    jsxFactory: `h`,
-    jsxFragmentFactory: `Fragment`,
-  }),
+  mergeContent(swc.configFile, {jsc: {parser: {tsx: true}}}),
+  ...typescript.mergeCompilerOptions({jsx: `react`}),
 );

@@ -4,6 +4,7 @@ import {createElementFactory} from '@snugjs/html';
 export type WebComponent<TPropsSchema extends PropsSchema> = (
   this: CustomElement<TPropsSchema>,
   next: () => void,
+  signal: AbortSignal,
 ) => Generator<void, void, undefined>;
 
 export type PropsSchema = Record<
@@ -92,13 +93,13 @@ export class CustomElement<
 
   protected connectedCallback(): void {
     if (super.isConnected && !this.#connectionAbortController) {
-      this.#connectionAbortController = new AbortController();
+      const {signal} = (this.#connectionAbortController =
+        new AbortController());
 
       const next = () => this.#iterationAbortController?.abort();
-      const generator = this.#component.call(this, next);
+      const generator = this.#component.call(this, next, signal);
 
-      this.#connectionAbortController.signal.addEventListener(`abort`, next);
-
+      signal.addEventListener(`abort`, next);
       this.#execute(generator);
     }
   }

@@ -21,8 +21,9 @@ describe(`CustomElement`, () => {
   });
 
   test(`connection`, async () => {
-    const Test = CustomElement.define(tagName, {}, function* () {
+    const Test = CustomElement.define(tagName, {}, function* (_next, signal) {
       expect(this.isConnected).toBe(true);
+      expect(signal.aborted).toBe(false);
 
       console.log(`connected`);
 
@@ -34,6 +35,7 @@ describe(`CustomElement`, () => {
         }
       } finally {
         expect(this.isConnected).toBe(false);
+        expect(signal.aborted).toBe(true);
 
         console.log(`disconnected`);
       }

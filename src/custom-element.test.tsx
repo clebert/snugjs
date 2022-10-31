@@ -31,7 +31,7 @@ describe(`CustomElement`, () => {
   });
 
   test(`connection`, async () => {
-    const Test = CustomElement.define(tagName, {}, function* (_next, signal) {
+    const Test = CustomElement.define(tagName, {}, function* ({signal}) {
       expect(this.isConnected).toBe(true);
       expect(signal.aborted).toBe(false);
 
@@ -178,10 +178,10 @@ describe(`CustomElement`, () => {
   });
 
   test(`next function`, async () => {
-    let nextFunction: (() => void) | undefined;
+    let next: (() => void) | undefined;
 
-    const Test = CustomElement.define(tagName, {}, function* (next) {
-      nextFunction = next;
+    const Test = CustomElement.define(tagName, {}, function* (args) {
+      next = args.next;
 
       console.log(`connected`);
 
@@ -206,8 +206,8 @@ describe(`CustomElement`, () => {
     expect(consoleLog).toHaveBeenCalledTimes(1);
     expect(consoleLog).toHaveBeenNthCalledWith(1, `connected`);
 
-    nextFunction!();
-    nextFunction!();
+    next!();
+    next!();
 
     expect(consoleLog).toHaveBeenCalledTimes(1);
 
@@ -217,8 +217,8 @@ describe(`CustomElement`, () => {
     expect(consoleLog).toHaveBeenNthCalledWith(2, `resumed`);
 
     element.remove();
-    nextFunction!();
-    nextFunction!();
+    next!();
+    next!();
 
     expect(consoleLog).toHaveBeenCalledTimes(2);
 

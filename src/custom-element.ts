@@ -3,9 +3,13 @@ import {createElementFactory} from '@snugjs/html';
 
 export type WebComponent<TPropsSchema extends PropsSchema> = (
   this: CustomElement<TPropsSchema>,
-  next: () => void,
-  signal: AbortSignal,
+  args: WebComponentArgs,
 ) => Generator<void, void, undefined>;
+
+export interface WebComponentArgs {
+  readonly next: () => void;
+  readonly signal: AbortSignal;
+}
 
 export type PropsSchema = Record<
   string,
@@ -101,7 +105,7 @@ export class CustomElement<
         new AbortController());
 
       const next = () => this.#iterationAbortController?.abort();
-      const generator = this.#component.call(this, next, signal);
+      const generator = this.#component.call(this, {next, signal});
 
       signal.addEventListener(`abort`, next);
       this.#execute(generator);

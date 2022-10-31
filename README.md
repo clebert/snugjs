@@ -8,7 +8,13 @@
 npm install snugjs
 ```
 
-## Example
+## TodoMVC
+
+A work-in-progress implementation of [TodoMVC](http://todomvc.com) using
+`snugjs` and [`@snugjs/html`](https://github.com/clebert/snugjs-html) can be
+found [here](https://github.com/clebert/snugjs-todomvc).
+
+## `<Counter />` Element Factory
 
 ```jsx
 import {createElement} from '@snugjs/html';

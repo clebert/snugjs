@@ -53,19 +53,19 @@
   "size-limit": [
     {
       "name": "brotli compression",
-      "limit": "757 B",
+      "limit": "804 B",
       "path": "./lib/index.js",
       "brotli": true
     },
     {
       "name": "gzip compression",
-      "limit": "886 B",
+      "limit": "931 B",
       "path": "./lib/index.js",
       "gzip": true
     },
     {
       "name": "no compression",
-      "limit": "1839 B",
+      "limit": "1963 B",
       "path": "./lib/index.js",
       "gzip": false
     }

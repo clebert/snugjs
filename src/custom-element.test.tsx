@@ -74,9 +74,17 @@ describe(`CustomElement`, () => {
 
     expect(element.isConnected).toBe(true);
 
+    await Promise.resolve();
+
+    expect(element.isConnected).toBe(true);
+
     element.remove();
 
     expect(element.isConnected).toBe(true);
+
+    await Promise.resolve();
+
+    expect(element.isConnected).toBe(false);
     expect(consoleLog).toHaveBeenCalledTimes(1);
 
     await Promise.resolve();
@@ -98,26 +106,74 @@ describe(`CustomElement`, () => {
     await Promise.resolve();
 
     expect(element.isConnected).toBe(false);
+    expect(consoleLog).toHaveBeenCalledTimes(3);
+
+    await Promise.resolve();
+
+    expect(element.isConnected).toBe(false);
     expect(consoleLog).toHaveBeenCalledTimes(4);
     expect(consoleLog).toHaveBeenNthCalledWith(4, `disconnected`);
     expect(consoleError).toHaveBeenCalledTimes(0);
   });
 
-  test(`single pass`, async () => {
+  test(`no yield`, async () => {
     const Test = CustomElement.define(tagName, {}, function* () {
-      console.log(`executed`);
+      console.log(`return`);
+    });
+
+    const element = (<Test key={key} />) as CustomElement<{}>;
+
+    document.body.appendChild(element);
+
+    expect(consoleLog).toHaveBeenCalledTimes(1);
+    expect(consoleLog).toHaveBeenNthCalledWith(1, `return`);
+
+    element.remove();
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    document.body.appendChild(element);
+
+    expect(consoleLog).toHaveBeenCalledTimes(2);
+    expect(consoleLog).toHaveBeenNthCalledWith(2, `return`);
+    expect(consoleError).toHaveBeenCalledTimes(0);
+  });
+
+  test(`concurrency`, async () => {
+    const Test = CustomElement.define(tagName, {}, function* () {
+      console.log(`connected`);
+
+      try {
+        while (true) {
+          yield;
+
+          console.log(`resumed`);
+        }
+      } finally {
+        console.log(`disconnected`);
+      }
     });
 
     const element = (<Test key={key} />) as CustomElement<{}>;
 
     document.body.appendChild(element).remove();
 
+    expect(consoleLog).toHaveBeenCalledTimes(1);
+    expect(consoleLog).toHaveBeenNthCalledWith(1, `connected`);
+
     <Test key={key}>foo</Test>;
+
+    expect(consoleLog).toHaveBeenCalledTimes(1);
 
     await Promise.resolve();
 
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-    expect(consoleLog).toHaveBeenNthCalledWith(1, `executed`);
+    expect(consoleLog).toHaveBeenCalledTimes(2);
+    expect(consoleLog).toHaveBeenNthCalledWith(2, `disconnected`);
+
+    await Promise.resolve();
+
+    expect(consoleLog).toHaveBeenCalledTimes(2);
     expect(consoleError).toHaveBeenCalledTimes(0);
   });
 
@@ -127,38 +183,53 @@ describe(`CustomElement`, () => {
     const Test = CustomElement.define(tagName, {}, function* (next) {
       nextFunction = next;
 
-      while (true) {
-        next();
-        next();
+      console.log(`connected`);
 
-        yield;
+      try {
+        while (true) {
+          next();
+          next();
 
-        console.log(`resumed`);
+          yield;
+
+          console.log(`resumed`);
+        }
+      } finally {
+        console.log(`disconnected`);
       }
     });
 
     const element = (<Test key={key} />) as CustomElement<{}>;
 
-    document.body.appendChild(element).remove();
+    document.body.appendChild(element);
 
-    expect(consoleLog).toHaveBeenCalledTimes(0);
+    expect(consoleLog).toHaveBeenCalledTimes(1);
+    expect(consoleLog).toHaveBeenNthCalledWith(1, `connected`);
 
+    nextFunction!();
     nextFunction!();
 
     expect(consoleLog).toHaveBeenCalledTimes(1);
-    expect(consoleLog).toHaveBeenNthCalledWith(1, `resumed`);
 
-    nextFunction!();
+    await Promise.resolve();
 
     expect(consoleLog).toHaveBeenCalledTimes(2);
     expect(consoleLog).toHaveBeenNthCalledWith(2, `resumed`);
 
-    await Promise.resolve();
-
+    element.remove();
     nextFunction!();
     nextFunction!();
 
     expect(consoleLog).toHaveBeenCalledTimes(2);
+
+    await Promise.resolve();
+
+    expect(consoleLog).toHaveBeenCalledTimes(3);
+    expect(consoleLog).toHaveBeenNthCalledWith(3, `disconnected`);
+
+    await Promise.resolve();
+
+    expect(consoleLog).toHaveBeenCalledTimes(3);
     expect(consoleError).toHaveBeenCalledTimes(0);
   });
 
@@ -194,15 +265,20 @@ describe(`CustomElement`, () => {
 
     expect(currentProps).toEqual({});
 
-    document.body.appendChild(element).remove();
+    document.body.appendChild(element);
 
     <Test key={key} />;
 
-    expect(consoleLog).toHaveBeenCalledTimes(0);
+    await Promise.resolve();
+
     expect(currentChildNodes).toBe(element.syntheticChildNodes);
     expect(currentProps).toBe(element.props);
 
     <Test key={key} n={NaN} />;
+
+    expect(consoleLog).toHaveBeenCalledTimes(0);
+
+    await Promise.resolve();
 
     expect(consoleLog).toHaveBeenCalledTimes(1);
     expect(consoleLog).toHaveBeenNthCalledWith(1, `resumed`);
@@ -212,11 +288,16 @@ describe(`CustomElement`, () => {
 
     <Test key={key} n={NaN} />;
 
-    expect(consoleLog).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+
     expect(currentChildNodes).toBe(element.syntheticChildNodes);
     expect(currentProps).toBe(element.props);
 
     <Test key={key} n={Math.PI} />;
+
+    expect(consoleLog).toHaveBeenCalledTimes(1);
+
+    await Promise.resolve();
 
     expect(consoleLog).toHaveBeenCalledTimes(2);
     expect(consoleLog).toHaveBeenNthCalledWith(2, `resumed`);
@@ -231,7 +312,11 @@ describe(`CustomElement`, () => {
     expect(currentChildNodes).toBe(element.syntheticChildNodes);
     expect(currentProps).toBe(element.props);
 
+    element.remove();
+
     <Test key={key} />;
+
+    await Promise.resolve();
 
     expect(consoleLog).toHaveBeenCalledTimes(2);
     expect(currentChildNodes).not.toBe((currentChildNodes = element.syntheticChildNodes));
@@ -299,11 +384,12 @@ describe(`CustomElement`, () => {
 
     expect(currentChildNodes).toEqual([]);
 
-    document.body.appendChild(element).remove();
+    document.body.appendChild(element);
 
     <Test key={key}>{[]}</Test>;
 
-    expect(consoleLog).toHaveBeenCalledTimes(0);
+    await Promise.resolve();
+
     expect(currentChildNodes).toBe(element.syntheticChildNodes);
     expect(currentProps).toBe(element.props);
 
@@ -317,6 +403,10 @@ describe(`CustomElement`, () => {
       {childElement3}
     </Test>;
 
+    expect(consoleLog).toHaveBeenCalledTimes(0);
+
+    await Promise.resolve();
+
     expect(consoleLog).toHaveBeenCalledTimes(1);
     expect(consoleLog).toHaveBeenNthCalledWith(1, `resumed`);
     expect(currentChildNodes).not.toBe((currentChildNodes = element.syntheticChildNodes));
@@ -325,7 +415,8 @@ describe(`CustomElement`, () => {
 
     <Test key={key}>{[childElement1, childElement2, childElement3]}</Test>;
 
-    expect(consoleLog).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+
     expect(currentChildNodes).toBe(element.syntheticChildNodes);
     expect(currentProps).toBe(element.props);
 
@@ -335,6 +426,10 @@ describe(`CustomElement`, () => {
       {childElement2}
     </Test>;
 
+    expect(consoleLog).toHaveBeenCalledTimes(1);
+
+    await Promise.resolve();
+
     expect(consoleLog).toHaveBeenCalledTimes(2);
     expect(consoleLog).toHaveBeenNthCalledWith(2, `resumed`);
     expect(currentChildNodes).not.toBe((currentChildNodes = element.syntheticChildNodes));
@@ -343,11 +438,16 @@ describe(`CustomElement`, () => {
 
     <Test key={key}>{[childElement1, childElement3, childElement2]}</Test>;
 
-    expect(consoleLog).toHaveBeenCalledTimes(2);
+    await Promise.resolve();
+
     expect(currentChildNodes).toBe(element.syntheticChildNodes);
     expect(currentProps).toBe(element.props);
 
     <Test key={key}>{childElement1}</Test>;
+
+    expect(consoleLog).toHaveBeenCalledTimes(2);
+
+    await Promise.resolve();
 
     expect(consoleLog).toHaveBeenCalledTimes(3);
     expect(consoleLog).toHaveBeenNthCalledWith(3, `resumed`);
@@ -362,7 +462,11 @@ describe(`CustomElement`, () => {
     expect(currentChildNodes).toBe(element.syntheticChildNodes);
     expect(currentProps).toBe(element.props);
 
+    element.remove();
+
     <Test key={key} />;
+
+    await Promise.resolve();
 
     expect(consoleLog).toHaveBeenCalledTimes(3);
     expect(currentChildNodes).not.toBe((currentChildNodes = element.syntheticChildNodes));
@@ -371,21 +475,17 @@ describe(`CustomElement`, () => {
     expect(consoleError).toHaveBeenCalledTimes(0);
   });
 
-  test(`error on execute`, async () => {
+  test(`error on connect`, () => {
     const Test = CustomElement.define(tagName, {}, function* () {
       throw new Error(`oops`);
     });
 
     const element = (<Test key={key} />) as CustomElement<{}>;
 
-    document.body.appendChild(element).remove();
+    document.body.appendChild(element);
 
     expect(consoleError).toHaveBeenCalledTimes(1);
     expect(consoleError).toHaveBeenNthCalledWith(1, `uncaught exception in web component:`, element, new Error(`oops`));
-
-    await Promise.resolve();
-
-    expect(consoleError).toHaveBeenCalledTimes(1);
   });
 
   test(`error on resume`, async () => {
@@ -397,18 +497,16 @@ describe(`CustomElement`, () => {
 
     const element = (<Test key={key} />) as CustomElement<{}>;
 
-    document.body.appendChild(element).remove();
-
-    expect(consoleError).toHaveBeenCalledTimes(0);
+    document.body.appendChild(element);
 
     <Test key={key}>foo</Test>;
 
-    expect(consoleError).toHaveBeenCalledTimes(1);
-    expect(consoleError).toHaveBeenNthCalledWith(1, `uncaught exception in web component:`, element, new Error(`oops`));
+    expect(consoleError).toHaveBeenCalledTimes(0);
 
     await Promise.resolve();
 
     expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(consoleError).toHaveBeenNthCalledWith(1, `uncaught exception in web component:`, element, new Error(`oops`));
   });
 
   test(`error on return`, async () => {
@@ -423,6 +521,8 @@ describe(`CustomElement`, () => {
     const element = (<Test key={key} />) as CustomElement<{}>;
 
     document.body.appendChild(element).remove();
+
+    await Promise.resolve();
 
     expect(consoleError).toHaveBeenCalledTimes(0);
 

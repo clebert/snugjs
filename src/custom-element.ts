@@ -109,7 +109,7 @@ export class CustomElement<
   }
 
   protected disconnectedCallback(): void {
-    Promise.resolve().finally(() => this.#disconnect());
+    void Promise.resolve().then(() => this.#disconnect());
   }
 
   #disconnect(): void {
@@ -128,8 +128,9 @@ export class CustomElement<
         if (!generator.next().done) {
           this.#iterationAbortController = new AbortController();
 
-          this.#iterationAbortController.signal.addEventListener(`abort`, () =>
-            this.#execute(generator),
+          this.#iterationAbortController.signal.addEventListener(
+            `abort`,
+            async () => Promise.resolve().then(() => this.#execute(generator)),
           );
         }
       } else {

@@ -45,7 +45,7 @@ export class CustomElement<
     tagName: string,
     propsSchema: TPropsSchema,
     component: WebComponent<TPropsSchema>,
-  ): ElementFactory<Props<TPropsSchema>> {
+  ): ElementFactory<Props<TPropsSchema>> & {readonly tagName: string} {
     customElements.define(
       tagName,
       class extends CustomElement<TPropsSchema> {
@@ -55,9 +55,13 @@ export class CustomElement<
       },
     );
 
-    return createElementFactory(tagName, (element, childNodes) =>
-      (element as CustomElement<TPropsSchema>).#update(childNodes),
+    const elementFactory = createElementFactory(
+      tagName,
+      (element, childNodes) =>
+        (element as CustomElement<TPropsSchema>).#update(childNodes),
     );
+
+    return Object.assign(elementFactory, {tagName: tagName.toUpperCase()});
   }
 
   readonly #propsSchema: TPropsSchema;

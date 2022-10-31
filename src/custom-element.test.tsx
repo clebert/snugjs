@@ -20,6 +20,16 @@ describe(`CustomElement`, () => {
     tagName = `x-${hrtime.bigint()}`;
   });
 
+  test(`instance and tag name`, () => {
+    const Test = CustomElement.define(tagName, {}, function* () {});
+    const element = (<Test />) as CustomElement<{}>;
+
+    expect(element).toBeInstanceOf(CustomElement);
+    expect(element.nodeName).toBe(tagName.toUpperCase());
+    expect(element.tagName).toBe(tagName.toUpperCase());
+    expect(Test.tagName).toBe(tagName.toUpperCase());
+  });
+
   test(`connection`, async () => {
     const Test = CustomElement.define(tagName, {}, function* (_next, signal) {
       expect(this.isConnected).toBe(true);

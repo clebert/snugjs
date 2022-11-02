@@ -8,7 +8,7 @@ import {CustomElement, createElementRef} from './index.js';
 
 test(`createElementRef()`, () => {
   const Custom = CustomElement.define(`x-custom`, {}, function* () {});
-  const custom: ElementRef<HTMLElement> = createElementRef(Custom.tagName);
+  const custom: ElementRef<HTMLElement> = createElementRef(Custom);
   const div: ElementRef<HTMLDivElement> = createElementRef(`div`);
 
   expect(custom.element).toBeInstanceOf(HTMLElement);

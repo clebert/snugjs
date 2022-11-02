@@ -42,6 +42,9 @@ export type Prop<TType> = TType extends 'boolean' | 'boolean?'
   ? string
   : never;
 
+export type CustomElementFactory<TPropsSchema extends PropsSchema> =
+  ElementFactory<Props<TPropsSchema>> & {readonly tagName: string};
+
 export class CustomElement<
   TPropsSchema extends PropsSchema,
 > extends HTMLElement {
@@ -49,7 +52,7 @@ export class CustomElement<
     tagName: string,
     propsSchema: TPropsSchema,
     component: WebComponent<TPropsSchema>,
-  ): ElementFactory<Props<TPropsSchema>> & {readonly tagName: string} {
+  ): CustomElementFactory<TPropsSchema> {
     customElements.define(
       tagName,
       class extends CustomElement<TPropsSchema> {
@@ -87,10 +90,6 @@ export class CustomElement<
     this.#props = this.#parseProps();
   }
 
-  override get isConnected(): boolean {
-    return this.#connectionAbortController ? true : false;
-  }
-
   get syntheticChildNodes(): readonly Node[] {
     return this.#childNodes;
   }
@@ -100,24 +99,31 @@ export class CustomElement<
   }
 
   protected connectedCallback(): void {
-    if (super.isConnected && !this.#connectionAbortController) {
+    if (!this.#connectionAbortController) {
       const {signal} = (this.#connectionAbortController =
         new AbortController());
 
-      const next = () => this.#iterationAbortController?.abort();
-      const generator = this.#component.call(this, {next, signal});
+      const generator = this.#component.call(this, {
+        next: () => {
+          const iterationAbortController = this.#iterationAbortController;
 
-      signal.addEventListener(`abort`, next);
+          if (iterationAbortController) {
+            void Promise.resolve().then(() => iterationAbortController.abort());
+          }
+        },
+        signal,
+      });
+
+      signal.addEventListener(`abort`, () =>
+        this.#iterationAbortController?.abort(),
+      );
+
       this.#execute(generator);
     }
   }
 
   protected disconnectedCallback(): void {
-    void Promise.resolve().then(() => this.#disconnect());
-  }
-
-  #disconnect(): void {
-    if (!super.isConnected && this.#connectionAbortController) {
+    if (!this.isConnected && this.#connectionAbortController) {
       const connectionAbortController = this.#connectionAbortController;
 
       this.#connectionAbortController = undefined;
@@ -129,14 +135,12 @@ export class CustomElement<
   #execute(generator: Generator<void, void, undefined>): void {
     try {
       if (this.isConnected) {
-        if (!generator.next().done) {
-          this.#iterationAbortController = new AbortController();
+        generator.next();
 
-          this.#iterationAbortController.signal.addEventListener(
-            `abort`,
-            async () => Promise.resolve().then(() => this.#execute(generator)),
-          );
-        }
+        (this.#iterationAbortController =
+          new AbortController()).signal.addEventListener(`abort`, () =>
+          this.#execute(generator),
+        );
       } else {
         generator.return();
       }
@@ -146,18 +150,17 @@ export class CustomElement<
   }
 
   #update(childNodes: readonly Node[]): void {
-    let props: Props<TPropsSchema> | undefined;
+    const props = this.#parseProps();
 
-    if (isShallowEqual(childNodes, this.#childNodes)) {
-      props = this.#parseProps();
-
-      if (isShallowEqual(props, this.#props)) {
-        return;
-      }
+    if (
+      isEqualChildren(childNodes, this.#childNodes) &&
+      isEqualProps(props, this.#props)
+    ) {
+      return;
     }
 
     this.#childNodes = childNodes;
-    this.#props = props ?? this.#parseProps();
+    this.#props = props;
 
     this.#iterationAbortController?.abort();
   }
@@ -185,13 +188,36 @@ export class CustomElement<
   }
 }
 
-function isShallowEqual(object1: object, object2: object): boolean {
-  const values1 = Array.isArray(object1) ? object1 : Object.values(object1);
-  const values2 = Array.isArray(object2) ? object2 : Object.values(object2);
-
-  if (values1.length !== values2.length) {
+function isEqualChildren(
+  childNodes1: readonly Node[],
+  childNodes2: readonly Node[],
+): boolean {
+  if (childNodes1.length !== childNodes2.length) {
     return false;
   }
+
+  for (let index = 0; index < childNodes1.length; index += 1) {
+    const childNode1 = childNodes1[index];
+    const childNode2 = childNodes2[index];
+
+    if (
+      childNode1 !== childNode2 &&
+      !(
+        childNode1 instanceof Text &&
+        childNode2 instanceof Text &&
+        childNode1.nodeValue === childNode2.nodeValue
+      )
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isEqualProps(object1: object, object2: object): boolean {
+  const values1 = Object.values(object1);
+  const values2 = Object.values(object2);
 
   for (let index = 0; index < values1.length; index += 1) {
     if (!Object.is(values1[index], values2[index])) {

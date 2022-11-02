@@ -1,534 +1,441 @@
 /** @jest-environment jsdom */
 /** @jsx createElement */
 
-import {hrtime} from 'node:process';
 import {beforeEach, describe, expect, jest, test} from '@jest/globals';
 import {createElement} from '@snugjs/html';
 import type {SpyInstance} from 'jest-mock';
-import {CustomElement} from './index.js';
+import {CustomElement, createElementRef} from './index.js';
 
-describe(`CustomElement`, () => {
-  let consoleLog: SpyInstance;
-  let consoleError: SpyInstance;
-  let key: object;
-  let tagName: string;
+const VariousChildren = CustomElement.define(`x-various-children`, {}, function* () {});
 
-  beforeEach(() => {
-    consoleLog = jest.spyOn(console, `log`);
-    consoleError = jest.spyOn(console, `error`);
-    key = {};
-    tagName = `x-${hrtime.bigint()}`;
-  });
+const VariousProps = CustomElement.define(
+  `x-various-props`,
+  {b1: `boolean`, b2: `boolean?`, n1: `number`, n2: `number?`, s1: `string`, s2: `string?`},
+  function* () {},
+);
 
-  test(`instance and tag name`, () => {
-    const Test = CustomElement.define(tagName, {}, function* () {});
-    const element = (<Test />) as CustomElement<{}>;
+const ExternalUpdate = CustomElement.define(`x-external-update`, {n: `number?`}, function* () {
+  let iteration = 0;
+  let prevChildNodes = this.syntheticChildNodes;
+  let prevProps = this.props;
 
-    expect(element).toBeInstanceOf(CustomElement);
-    expect(element.nodeName).toBe(tagName.toUpperCase());
-    expect(element.tagName).toBe(tagName.toUpperCase());
-    expect(Test.tagName).toBe(tagName.toUpperCase());
-  });
+  while (true) {
+    this.replaceChildren(`#${(iteration += 1)}`);
 
-  test(`connection`, async () => {
-    const Test = CustomElement.define(tagName, {}, function* ({signal}) {
-      expect(this.isConnected).toBe(true);
+    yield;
+
+    expect(prevChildNodes).not.toBe((prevChildNodes = this.syntheticChildNodes));
+    expect(prevProps).not.toBe((prevProps = this.props));
+  }
+});
+
+const InternalUpdate = CustomElement.define(`x-internal-update`, {}, function* ({next, signal}) {
+  let iteration = 0;
+  let state = 0;
+
+  const button = createElementRef(`button`);
+
+  button.element.addEventListener(
+    `click`,
+    () => {
+      state += 1;
+
+      next();
+    },
+    {signal},
+  );
+
+  try {
+    while (true) {
       expect(signal.aborted).toBe(false);
 
-      console.log(`connected`);
+      this.replaceChildren(`#${(iteration += 1)}: ${state}`, <button key={button.key} />);
 
-      try {
-        while (true) {
-          yield;
-
-          console.log(`resumed`);
-        }
-      } finally {
-        expect(this.isConnected).toBe(false);
-        expect(signal.aborted).toBe(true);
-
-        console.log(`disconnected`);
-      }
-    });
-
-    const element = (<Test key={key} />) as CustomElement<{}>;
-
-    expect(element.isConnected).toBe(false);
-    expect(consoleLog).toHaveBeenCalledTimes(0);
-
-    document.body.appendChild(element);
-
-    expect(element.isConnected).toBe(true);
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-    expect(consoleLog).toHaveBeenNthCalledWith(1, `connected`);
-
-    element.remove();
-
-    expect(element.isConnected).toBe(true);
-
-    document.body.appendChild(element);
-
-    expect(element.isConnected).toBe(true);
-
-    await Promise.resolve();
-
-    expect(element.isConnected).toBe(true);
-
-    await Promise.resolve();
-
-    expect(element.isConnected).toBe(true);
-
-    element.remove();
-
-    expect(element.isConnected).toBe(true);
-
-    await Promise.resolve();
-
-    expect(element.isConnected).toBe(false);
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-
-    await Promise.resolve();
-
-    expect(element.isConnected).toBe(false);
-    expect(consoleLog).toHaveBeenCalledTimes(2);
-    expect(consoleLog).toHaveBeenNthCalledWith(2, `disconnected`);
-
-    document.body.appendChild(element);
-
-    expect(element.isConnected).toBe(true);
-    expect(consoleLog).toHaveBeenCalledTimes(3);
-    expect(consoleLog).toHaveBeenNthCalledWith(3, `connected`);
-
-    element.remove();
-
-    expect(element.isConnected).toBe(true);
-
-    await Promise.resolve();
-
-    expect(element.isConnected).toBe(false);
-    expect(consoleLog).toHaveBeenCalledTimes(3);
-
-    await Promise.resolve();
-
-    expect(element.isConnected).toBe(false);
-    expect(consoleLog).toHaveBeenCalledTimes(4);
-    expect(consoleLog).toHaveBeenNthCalledWith(4, `disconnected`);
-    expect(consoleError).toHaveBeenCalledTimes(0);
-  });
-
-  test(`no yield`, async () => {
-    const Test = CustomElement.define(tagName, {}, function* () {
-      console.log(`return`);
-    });
-
-    const element = (<Test key={key} />) as CustomElement<{}>;
-
-    document.body.appendChild(element);
-
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-    expect(consoleLog).toHaveBeenNthCalledWith(1, `return`);
-
-    element.remove();
-
-    await Promise.resolve();
-    await Promise.resolve();
-
-    document.body.appendChild(element);
-
-    expect(consoleLog).toHaveBeenCalledTimes(2);
-    expect(consoleLog).toHaveBeenNthCalledWith(2, `return`);
-    expect(consoleError).toHaveBeenCalledTimes(0);
-  });
-
-  test(`concurrency`, async () => {
-    const Test = CustomElement.define(tagName, {}, function* () {
-      console.log(`connected`);
-
-      try {
-        while (true) {
-          yield;
-
-          console.log(`resumed`);
-        }
-      } finally {
-        console.log(`disconnected`);
-      }
-    });
-
-    const element = (<Test key={key} />) as CustomElement<{}>;
-
-    document.body.appendChild(element).remove();
-
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-    expect(consoleLog).toHaveBeenNthCalledWith(1, `connected`);
-
-    <Test key={key}>foo</Test>;
-
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(2);
-    expect(consoleLog).toHaveBeenNthCalledWith(2, `disconnected`);
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(2);
-    expect(consoleError).toHaveBeenCalledTimes(0);
-  });
-
-  test(`next function`, async () => {
-    let next: (() => void) | undefined;
-
-    const Test = CustomElement.define(tagName, {}, function* (args) {
-      next = args.next;
-
-      console.log(`connected`);
-
-      try {
-        while (true) {
-          next();
-          next();
-
-          yield;
-
-          console.log(`resumed`);
-        }
-      } finally {
-        console.log(`disconnected`);
-      }
-    });
-
-    const element = (<Test key={key} />) as CustomElement<{}>;
-
-    document.body.appendChild(element);
-
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-    expect(consoleLog).toHaveBeenNthCalledWith(1, `connected`);
-
-    next!();
-    next!();
-
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(2);
-    expect(consoleLog).toHaveBeenNthCalledWith(2, `resumed`);
-
-    element.remove();
-    next!();
-    next!();
-
-    expect(consoleLog).toHaveBeenCalledTimes(2);
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(3);
-    expect(consoleLog).toHaveBeenNthCalledWith(3, `disconnected`);
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(3);
-    expect(consoleError).toHaveBeenCalledTimes(0);
-  });
-
-  test(`default props`, () => {
-    CustomElement.define(tagName, {}, function* () {});
-
-    const customElement = document.createElement(tagName) as CustomElement<{}>;
-
-    expect(customElement.props).toEqual({});
-  });
-
-  test(`update props`, async () => {
-    const propsSchema = {n: `number?`} as const;
-
-    const Test = CustomElement.define(tagName, propsSchema, function* () {
-      let previousChildNodes = this.syntheticChildNodes;
-      let previousProps = this.props;
-
-      while (true) {
-        yield;
-
-        expect(previousChildNodes).not.toBe((previousChildNodes = this.syntheticChildNodes));
-        expect(previousProps).not.toBe((previousProps = this.props));
-
-        console.log(`resumed`);
-      }
-    });
-
-    const element = (<Test key={key} />) as CustomElement<typeof propsSchema>;
-
-    let currentChildNodes = element.syntheticChildNodes;
-    let currentProps = element.props;
-
-    expect(currentProps).toEqual({});
-
-    document.body.appendChild(element);
-
-    <Test key={key} />;
-
-    await Promise.resolve();
-
-    expect(currentChildNodes).toBe(element.syntheticChildNodes);
-    expect(currentProps).toBe(element.props);
-
-    <Test key={key} n={NaN} />;
-
-    expect(consoleLog).toHaveBeenCalledTimes(0);
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-    expect(consoleLog).toHaveBeenNthCalledWith(1, `resumed`);
-    expect(currentChildNodes).not.toBe((currentChildNodes = element.syntheticChildNodes));
-    expect(currentProps).not.toBe((currentProps = element.props));
-    expect(currentProps).toEqual({n: NaN});
-
-    <Test key={key} n={NaN} />;
-
-    await Promise.resolve();
-
-    expect(currentChildNodes).toBe(element.syntheticChildNodes);
-    expect(currentProps).toBe(element.props);
-
-    <Test key={key} n={Math.PI} />;
-
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(2);
-    expect(consoleLog).toHaveBeenNthCalledWith(2, `resumed`);
-    expect(currentChildNodes).not.toBe((currentChildNodes = element.syntheticChildNodes));
-    expect(currentProps).not.toBe((currentProps = element.props));
-    expect(currentProps).toEqual({n: Math.PI});
-
-    <Test key={key} n={Math.PI} />;
-
-    await Promise.resolve();
-
-    expect(currentChildNodes).toBe(element.syntheticChildNodes);
-    expect(currentProps).toBe(element.props);
-
-    element.remove();
-
-    <Test key={key} />;
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(2);
-    expect(currentChildNodes).not.toBe((currentChildNodes = element.syntheticChildNodes));
-    expect(currentProps).not.toBe((currentProps = element.props));
-    expect(currentProps).toEqual({});
-    expect(consoleError).toHaveBeenCalledTimes(0);
-  });
-
-  test(`props schema`, () => {
-    const propsSchema = {
-      b1: `boolean`,
-      b2: `boolean?`,
-      n1: `number`,
-      n2: `number?`,
-      s1: `string`,
-      s2: `string?`,
-    } as const;
-
-    const Test = CustomElement.define(tagName, propsSchema, function* () {});
-    const element = (<Test key={key} b1={false} n1={0} s1={``} />) as CustomElement<typeof propsSchema>;
-
-    expect(element.props).toEqual({b1: false, b2: false, n1: 0, s1: ``});
-    expect(element.getAttributeNames()).toEqual([`n1`, `s1`]);
-    expect(element.getAttribute(`n1`)).toBe(`0`);
-    expect(element.getAttribute(`s1`)).toBe(``);
-
-    <Test key={key} b1={true} b2={false} n1={Math.PI} n2={0} s1={`foo`} s2={``} />;
-
-    expect(element.props).toEqual({b1: true, b2: false, n1: Math.PI, n2: 0, s1: `foo`, s2: ``});
-    expect(element.getAttributeNames()).toEqual([`b1`, `n1`, `n2`, `s1`, `s2`]);
-    expect(element.getAttribute(`b1`)).toBe(``);
-    expect(element.getAttribute(`n1`)).toBe(`${Math.PI}`);
-    expect(element.getAttribute(`n2`)).toBe(`0`);
-    expect(element.getAttribute(`s1`)).toBe(`foo`);
-    expect(element.getAttribute(`s2`)).toBe(``);
-  });
-
-  test(`default synthetic child nodes`, () => {
-    CustomElement.define(tagName, {}, function* () {});
-
-    const element = document.createElement(tagName) as CustomElement<{}>;
-
-    expect(element.syntheticChildNodes).toEqual([]);
-  });
-
-  test(`update synthetic child nodes`, async () => {
-    const Test = CustomElement.define(tagName, {}, function* () {
-      let previousChildNodes = this.syntheticChildNodes;
-      let previousProps = this.props;
-
-      while (true) {
-        yield;
-
-        expect(previousChildNodes).not.toBe((previousChildNodes = this.syntheticChildNodes));
-        expect(previousProps).not.toBe((previousProps = this.props));
-
-        console.log(`resumed`);
-      }
-    });
-
-    const element = (<Test key={key} />) as CustomElement<{}>;
-
-    let currentChildNodes = element.syntheticChildNodes;
-    let currentProps = element.props;
-
-    expect(currentChildNodes).toEqual([]);
-
-    document.body.appendChild(element);
-
-    <Test key={key}>{[]}</Test>;
-
-    await Promise.resolve();
-
-    expect(currentChildNodes).toBe(element.syntheticChildNodes);
-    expect(currentProps).toBe(element.props);
-
-    const childElement1 = <div />;
-    const childElement2 = <div />;
-    const childElement3 = <div />;
-
-    <Test key={key}>
-      {childElement1}
-      {childElement2}
-      {childElement3}
-    </Test>;
-
-    expect(consoleLog).toHaveBeenCalledTimes(0);
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-    expect(consoleLog).toHaveBeenNthCalledWith(1, `resumed`);
-    expect(currentChildNodes).not.toBe((currentChildNodes = element.syntheticChildNodes));
-    expect(currentChildNodes).toEqual([childElement1, childElement2, childElement3]);
-    expect(currentProps).not.toBe((currentProps = element.props));
-
-    <Test key={key}>{[childElement1, childElement2, childElement3]}</Test>;
-
-    await Promise.resolve();
-
-    expect(currentChildNodes).toBe(element.syntheticChildNodes);
-    expect(currentProps).toBe(element.props);
-
-    <Test key={key}>
-      {childElement1}
-      {childElement3}
-      {childElement2}
-    </Test>;
-
-    expect(consoleLog).toHaveBeenCalledTimes(1);
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(2);
-    expect(consoleLog).toHaveBeenNthCalledWith(2, `resumed`);
-    expect(currentChildNodes).not.toBe((currentChildNodes = element.syntheticChildNodes));
-    expect(currentChildNodes).toEqual([childElement1, childElement3, childElement2]);
-    expect(currentProps).not.toBe((currentProps = element.props));
-
-    <Test key={key}>{[childElement1, childElement3, childElement2]}</Test>;
-
-    await Promise.resolve();
-
-    expect(currentChildNodes).toBe(element.syntheticChildNodes);
-    expect(currentProps).toBe(element.props);
-
-    <Test key={key}>{childElement1}</Test>;
-
-    expect(consoleLog).toHaveBeenCalledTimes(2);
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(3);
-    expect(consoleLog).toHaveBeenNthCalledWith(3, `resumed`);
-    expect(currentChildNodes).not.toBe((currentChildNodes = element.syntheticChildNodes));
-    expect(currentChildNodes).toEqual([childElement1]);
-    expect(currentProps).not.toBe((currentProps = element.props));
-
-    <Test key={key}>{[childElement1]}</Test>;
-
-    await Promise.resolve();
-
-    expect(currentChildNodes).toBe(element.syntheticChildNodes);
-    expect(currentProps).toBe(element.props);
-
-    element.remove();
-
-    <Test key={key} />;
-
-    await Promise.resolve();
-
-    expect(consoleLog).toHaveBeenCalledTimes(3);
-    expect(currentChildNodes).not.toBe((currentChildNodes = element.syntheticChildNodes));
-    expect(currentChildNodes).toEqual([]);
-    expect(currentProps).not.toBe((currentProps = element.props));
-    expect(consoleError).toHaveBeenCalledTimes(0);
-  });
-
-  test(`error on connect`, () => {
-    const Test = CustomElement.define(tagName, {}, function* () {
-      throw new Error(`oops`);
-    });
-
-    const element = (<Test key={key} />) as CustomElement<{}>;
-
-    document.body.appendChild(element);
-
-    expect(consoleError).toHaveBeenCalledTimes(1);
-    expect(consoleError).toHaveBeenNthCalledWith(1, `uncaught exception in web component:`, element, new Error(`oops`));
-  });
-
-  test(`error on resume`, async () => {
-    const Test = CustomElement.define(tagName, {}, function* () {
       yield;
+    }
+  } finally {
+    expect(signal.aborted).toBe(true);
 
-      throw new Error(`oops`);
-    });
+    this.replaceChildren(`#${(iteration += 1)}: ${state}; disconnected`);
+  }
+});
 
-    const element = (<Test key={key} />) as CustomElement<{}>;
+const InitialError = CustomElement.define(`x-initial-error`, {}, function* () {
+  throw new Error(`oops`);
+});
 
-    document.body.appendChild(element);
+const IterationError = CustomElement.define(`x-iteration-error`, {}, function* () {
+  try {
+    yield;
+  } finally {
+    throw new Error(`oops`);
+  }
+});
 
-    <Test key={key}>foo</Test>;
+const NoEffect = CustomElement.define(`x-no-effect`, {}, function* ({next}) {
+  next();
+});
 
-    expect(consoleError).toHaveBeenCalledTimes(0);
+describe(`CustomElement`, () => {
+  let consoleError: SpyInstance;
 
-    await Promise.resolve();
-
-    expect(consoleError).toHaveBeenCalledTimes(1);
-    expect(consoleError).toHaveBeenNthCalledWith(1, `uncaught exception in web component:`, element, new Error(`oops`));
+  beforeEach(() => {
+    consoleError = jest.spyOn(console, `error`);
   });
 
-  test(`error on return`, async () => {
-    const Test = CustomElement.define(tagName, {}, function* () {
-      try {
-        yield;
-      } finally {
-        throw new Error(`oops`);
-      }
-    });
+  test(`instantiating`, () => {
+    const custom = createElementRef(VariousChildren);
 
-    const element = (<Test key={key} />) as CustomElement<{}>;
+    expect(custom.element).toBeInstanceOf(CustomElement);
+    expect(custom.element.nodeName).toBe(`X-VARIOUS-CHILDREN`);
+    expect(custom.element.tagName).toBe(`X-VARIOUS-CHILDREN`);
+    expect(VariousChildren.tagName).toBe(`X-VARIOUS-CHILDREN`);
+  });
 
-    document.body.appendChild(element).remove();
+  test(`setting various children`, () => {
+    const custom = createElementRef(VariousChildren);
+
+    expect(custom.element.childNodes.length).toBe(0);
+    expect(custom.element.syntheticChildNodes).toEqual([]);
+
+    <VariousChildren key={custom.key} />;
+
+    expect(custom.element.childNodes.length).toBe(0);
+    expect(custom.element.syntheticChildNodes).toEqual([]);
+
+    <VariousChildren key={custom.key}>
+      foo
+      <a />
+      {[`bar`, <div />]}
+    </VariousChildren>;
+
+    expect(custom.element.childNodes.length).toBe(0);
+
+    expect(custom.element.syntheticChildNodes).toEqual([
+      document.createTextNode(`foo`),
+      <a />,
+      document.createTextNode(`bar`),
+      <div />,
+    ]);
+  });
+
+  test(`setting various props`, () => {
+    const custom = createElementRef(VariousProps);
+
+    expect(custom.element.props).toEqual({b1: false, b2: false});
+    expect(Object.keys(custom.element.props)).toEqual([`b1`, `b2`, `n1`, `n2`, `s1`, `s2`]);
+
+    <VariousProps key={custom.key} b1={false} n1={0} s1="" />;
+
+    expect(custom.element.props).toEqual({b1: false, b2: false, n1: 0, s1: ``});
+    expect(Object.keys(custom.element.props)).toEqual([`b1`, `b2`, `n1`, `n2`, `s1`, `s2`]);
+
+    <VariousProps key={custom.key} b1={false} n1={0} s1="" b2={undefined} n2={undefined} s2={undefined} />;
+
+    expect(custom.element.props).toEqual({b1: false, b2: false, n1: 0, s1: ``});
+    expect(Object.keys(custom.element.props)).toEqual([`b1`, `b2`, `n1`, `n2`, `s1`, `s2`]);
+
+    <VariousProps key={custom.key} b1={true} n1={1} s1="foo" b2={true} n2={2} s2="bar" />;
+
+    expect(custom.element.props).toEqual({b1: true, b2: true, n1: 1, n2: 2, s1: `foo`, s2: `bar`});
+    expect(Object.keys(custom.element.props)).toEqual([`b1`, `b2`, `n1`, `n2`, `s1`, `s2`]);
+  });
+
+  test(`updating children triggers a synchronous iteration`, () => {
+    const custom = createElementRef(ExternalUpdate);
+    const a1 = createElementRef(`a`);
+    const a2 = createElementRef(`a`);
+
+    <ExternalUpdate key={custom.key}>
+      foo
+      <a key={a1.key} />
+      bar
+      <a key={a2.key} />
+    </ExternalUpdate>;
+
+    expect(custom.element.textContent).toBe(``);
+
+    document.body.appendChild(custom.element);
+
+    expect(custom.element.textContent).toBe(`#1`);
+
+    <ExternalUpdate key={custom.key}>
+      foo
+      <a key={a1.key} />
+      bar
+      <a key={a2.key} />
+    </ExternalUpdate>;
+
+    expect(custom.element.textContent).toBe(`#1`);
+
+    <ExternalUpdate key={custom.key}>
+      foo
+      <a key={a2.key} />
+      bar
+      <a key={a1.key} />
+    </ExternalUpdate>;
+
+    expect(custom.element.textContent).toBe(`#2`);
+
+    <ExternalUpdate key={custom.key}>
+      foo
+      <a key={a2.key} />
+      bar
+      <a key={a1.key} />
+    </ExternalUpdate>;
+
+    expect(custom.element.textContent).toBe(`#2`);
+
+    <ExternalUpdate key={custom.key}>
+      bar
+      <a key={a2.key} />
+      foo
+      <a key={a1.key} />
+    </ExternalUpdate>;
+
+    expect(custom.element.textContent).toBe(`#3`);
+
+    <ExternalUpdate key={custom.key}>
+      bar
+      <a key={a2.key} />
+      foo
+      <a key={a1.key} />
+    </ExternalUpdate>;
+
+    expect(custom.element.textContent).toBe(`#3`);
+
+    <ExternalUpdate key={custom.key}>
+      bar
+      <a key={a2.key} />
+      foo
+    </ExternalUpdate>;
+
+    expect(custom.element.textContent).toBe(`#4`);
+    expect(consoleError).toHaveBeenCalledTimes(0);
+  });
+
+  test(`updating props triggers a synchronous iteration`, () => {
+    const custom = createElementRef(ExternalUpdate);
+
+    <ExternalUpdate key={custom.key} n={0} />;
+
+    expect(custom.element.textContent).toBe(``);
+
+    document.body.appendChild(custom.element);
+
+    expect(custom.element.textContent).toBe(`#1`);
+
+    <ExternalUpdate key={custom.key} n={0} />;
+
+    expect(custom.element.textContent).toBe(`#1`);
+
+    <ExternalUpdate key={custom.key} n={undefined} />;
+
+    expect(custom.element.textContent).toBe(`#2`);
+
+    <ExternalUpdate key={custom.key} />;
+
+    expect(custom.element.textContent).toBe(`#2`);
+
+    <ExternalUpdate key={custom.key} n={NaN} />;
+
+    expect(custom.element.textContent).toBe(`#3`);
+
+    <ExternalUpdate key={custom.key} n={NaN} />;
+
+    expect(custom.element.textContent).toBe(`#3`);
+    expect(consoleError).toHaveBeenCalledTimes(0);
+  });
+
+  test(`calling next triggers an asynchronous iteration`, async () => {
+    const custom = createElementRef(InternalUpdate);
+
+    expect(custom.element.textContent).toBe(``);
+
+    document.body.appendChild(custom.element);
+
+    expect(custom.element.textContent).toBe(`#1: 0`);
+
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+
+    expect(custom.element.textContent).toBe(`#1: 0`);
 
     await Promise.resolve();
+
+    expect(custom.element.textContent).toBe(`#2: 3`);
+    expect(consoleError).toHaveBeenCalledTimes(0);
+  });
+
+  test(`updating children cancels an already scheduled asynchronous iteration`, async () => {
+    const custom = createElementRef(InternalUpdate);
+
+    expect(custom.element.textContent).toBe(``);
+
+    document.body.appendChild(custom.element);
+
+    expect(custom.element.textContent).toBe(`#1: 0`);
+
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+
+    <InternalUpdate key={custom.key}>foo</InternalUpdate>;
+
+    expect(custom.element.textContent).toBe(`#2: 3`);
+
+    await Promise.resolve();
+
+    expect(custom.element.textContent).toBe(`#2: 3`);
+    expect(consoleError).toHaveBeenCalledTimes(0);
+  });
+
+  test(`ineffective updating of children does not cancel an already scheduled asynchronous iteration`, async () => {
+    const custom = createElementRef(InternalUpdate);
+
+    expect(custom.element.textContent).toBe(``);
+
+    document.body.appendChild(custom.element);
+
+    expect(custom.element.textContent).toBe(`#1: 0`);
+
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+
+    <InternalUpdate key={custom.key} />;
+
+    expect(custom.element.textContent).toBe(`#1: 0`);
+
+    await Promise.resolve();
+
+    expect(custom.element.textContent).toBe(`#2: 3`);
+    expect(consoleError).toHaveBeenCalledTimes(0);
+  });
+
+  test(`disconnecting cancels an already scheduled asynchronous iteration`, async () => {
+    const custom = createElementRef(InternalUpdate);
+
+    expect(custom.element.textContent).toBe(``);
+
+    document.body.appendChild(custom.element);
+
+    expect(custom.element.textContent).toBe(`#1: 0`);
+
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+
+    expect(custom.element.textContent).toBe(`#1: 0`);
+
+    custom.element.remove();
+
+    expect(custom.element.textContent).toBe(`#2: 3; disconnected`);
+
+    document.body.appendChild(custom.element);
+
+    expect(custom.element.textContent).toBe(`#1: 0`);
+
+    await Promise.resolve();
+
+    expect(custom.element.textContent).toBe(`#1: 0`);
+    expect(consoleError).toHaveBeenCalledTimes(0);
+  });
+
+  test(`replacing children does not cause disconnection`, async () => {
+    const custom = createElementRef(InternalUpdate);
+
+    expect(custom.element.textContent).toBe(``);
+
+    document.body.appendChild(<InternalUpdate key={custom.key} />);
+
+    expect(custom.element.textContent).toBe(`#1: 0`);
+
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+
+    expect(custom.element.textContent).toBe(`#1: 0`);
+
+    await Promise.resolve();
+
+    expect(custom.element.textContent).toBe(`#2: 3`);
+
+    document.body.replaceChildren(<InternalUpdate key={custom.key} />);
+
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+    custom.element.querySelector(`button`)?.click();
+
+    expect(custom.element.textContent).toBe(`#2: 3`);
+
+    await Promise.resolve();
+
+    expect(custom.element.textContent).toBe(`#3: 6`);
+    expect(consoleError).toHaveBeenCalledTimes(0);
+  });
+
+  test(`connecting causes an uncaught exception`, () => {
+    const custom = createElementRef(InitialError);
 
     expect(consoleError).toHaveBeenCalledTimes(0);
 
-    await Promise.resolve();
+    document.body.appendChild(custom.element);
 
     expect(consoleError).toHaveBeenCalledTimes(1);
-    expect(consoleError).toHaveBeenNthCalledWith(1, `uncaught exception in web component:`, element, new Error(`oops`));
+
+    expect(consoleError).toHaveBeenNthCalledWith(
+      1,
+      `uncaught exception in web component:`,
+      custom.element,
+      new Error(`oops`),
+    );
+  });
+
+  test(`disconnecting causes an uncaught exception`, () => {
+    const custom = createElementRef(IterationError);
+
+    document.body.appendChild(custom.element);
+
+    expect(consoleError).toHaveBeenCalledTimes(0);
+
+    custom.element.remove();
+
+    expect(consoleError).toHaveBeenCalledTimes(1);
+
+    expect(consoleError).toHaveBeenNthCalledWith(
+      1,
+      `uncaught exception in web component:`,
+      custom.element,
+      new Error(`oops`),
+    );
+  });
+
+  test(`updating children causes an uncaught exception`, () => {
+    const custom = createElementRef(IterationError);
+
+    document.body.appendChild(custom.element);
+
+    expect(consoleError).toHaveBeenCalledTimes(0);
+
+    <IterationError key={custom.key}>foo</IterationError>;
+
+    expect(consoleError).toHaveBeenCalledTimes(1);
+
+    expect(consoleError).toHaveBeenNthCalledWith(
+      1,
+      `uncaught exception in web component:`,
+      custom.element,
+      new Error(`oops`),
+    );
+  });
+
+  test(`calling next has no effect on a finished generator`, async () => {
+    const custom = createElementRef(NoEffect);
+
+    document.body.appendChild(custom.element);
+
+    await Promise.resolve();
   });
 });

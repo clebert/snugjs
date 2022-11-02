@@ -1,4 +1,9 @@
 import {createElementFactory} from '@snugjs/html';
+import type {
+  CustomElement,
+  CustomElementFactory,
+  PropsSchema,
+} from './custom-element.js';
 
 export interface ElementRef<TElement> {
   readonly key: object;
@@ -9,15 +14,25 @@ export function createElementRef<TTagName extends keyof HTMLElementTagNameMap>(
   tagName: TTagName,
 ): ElementRef<HTMLElementTagNameMap[TTagName]>;
 
-export function createElementRef(tagName: string): ElementRef<HTMLElement>;
+export function createElementRef<TPropsSchema extends PropsSchema>(
+  tagName: CustomElementFactory<TPropsSchema>,
+): ElementRef<CustomElement<TPropsSchema>>;
 
-export function createElementRef(tagName: string): ElementRef<HTMLElement> {
+export function createElementRef(
+  tagName: string | {readonly tagName: string},
+): ElementRef<HTMLElement>;
+
+export function createElementRef(
+  tagName: string | {readonly tagName: string},
+): ElementRef<HTMLElement> {
   const key = {};
 
-  return {
-    key,
-    element: createElementFactory(tagName, nop)({key}) as HTMLElement,
-  };
+  const element = createElementFactory(
+    typeof tagName === `string` ? tagName : tagName.tagName,
+    nop,
+  )({key}) as HTMLElement;
+
+  return {key, element};
 }
 
 function nop() {}

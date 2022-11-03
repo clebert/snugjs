@@ -76,6 +76,37 @@ const NoEffect = CustomElement.define(`x-no-effect`, {}, function* ({next}) {
   next();
 });
 
+const SelfRemoval = CustomElement.define(`x-self-removal`, {}, function* ({signal}) {
+  let iteration = 0;
+
+  try {
+    while (true) {
+      expect(signal.aborted).toBe(false);
+
+      this.replaceChildren(`#${(iteration += 1)}: connected`);
+      this.remove();
+
+      yield;
+    }
+  } finally {
+    expect(signal.aborted).toBe(true);
+
+    this.replaceChildren(`#${(iteration += 1)}: disconnected`);
+  }
+});
+
+const SelfRemovalError = CustomElement.define(`x-self-removal-error`, {}, function* () {
+  try {
+    while (true) {
+      this.remove();
+
+      yield;
+    }
+  } finally {
+    throw new Error(`oops`);
+  }
+});
+
 describe(`CustomElement`, () => {
   let consoleError: SpyInstance;
 
@@ -437,5 +468,32 @@ describe(`CustomElement`, () => {
     document.body.appendChild(custom.element);
 
     await Promise.resolve();
+  });
+
+  test(`self-removal terminates the generator`, () => {
+    const custom = createElementRef(SelfRemoval);
+
+    expect(custom.element.textContent).toBe(``);
+
+    document.body.appendChild(custom.element);
+
+    expect(custom.element.textContent).toBe(`#2: disconnected`);
+
+    expect(consoleError).toHaveBeenCalledTimes(0);
+  });
+
+  test(`self-removal causes an uncaught exception`, () => {
+    const custom = createElementRef(SelfRemovalError);
+
+    expect(consoleError).toHaveBeenCalledTimes(0);
+
+    document.body.appendChild(custom.element);
+
+    expect(consoleError).toHaveBeenNthCalledWith(
+      1,
+      `uncaught exception in web component:`,
+      custom.element,
+      new Error(`oops`),
+    );
   });
 });

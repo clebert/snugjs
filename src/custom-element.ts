@@ -135,12 +135,16 @@ export class CustomElement<
   #execute(generator: Generator<void, void, undefined>): void {
     try {
       if (this.isConnected) {
-        generator.next();
-
-        (this.#iterationAbortController =
-          new AbortController()).signal.addEventListener(`abort`, () =>
-          this.#execute(generator),
-        );
+        if (!generator.next().done) {
+          if (!this.isConnected) {
+            generator.return();
+          } else {
+            (this.#iterationAbortController =
+              new AbortController()).signal.addEventListener(`abort`, () =>
+              this.#execute(generator),
+            );
+          }
+        }
       } else {
         generator.return();
       }

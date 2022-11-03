@@ -478,7 +478,6 @@ describe(`CustomElement`, () => {
     document.body.appendChild(custom.element);
 
     expect(custom.element.textContent).toBe(`#2: disconnected`);
-
     expect(consoleError).toHaveBeenCalledTimes(0);
   });
 

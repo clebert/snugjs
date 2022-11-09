@@ -21,16 +21,16 @@ import {createElement} from '@snugjs/html';
 import {CustomElement, createElementRef} from 'snugjs';
 
 export const Counter = CustomElement.define(
-  `x-counter`,
-  {initialCount: `number?`},
+  'x-counter',
+  {initialCount: 'number?'},
   function* ({next, signal}) {
-    const decrementButton = createElementRef(`button`);
-    const incrementButton = createElementRef(`button`);
+    const decrementButton = createElementRef('button');
+    const incrementButton = createElementRef('button');
 
     let count = this.props.initialCount ?? 0;
 
     decrementButton.element.addEventListener(
-      `click`,
+      'click',
       () => {
         count -= 1;
         next();
@@ -39,7 +39,7 @@ export const Counter = CustomElement.define(
     );
 
     incrementButton.element.addEventListener(
-      `click`,
+      'click',
       () => {
         count += 1;
         next();

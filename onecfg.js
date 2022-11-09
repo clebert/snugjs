@@ -7,6 +7,7 @@ import {
   node,
   npm,
   prettier,
+  snugjs,
   swc,
   typescript,
   vscode,
@@ -25,12 +26,12 @@ writeFiles(
   ...node({nodeVersion: `18`}),
   ...npm(),
   ...prettier(),
+  ...snugjs(),
   ...swc({target}),
   ...typescript({target, emit: true}),
   ...vscode({includeFilesInExplorer: false}),
   ...wallaby(),
 
-  mergeContent(jest.configFile, {clearMocks: true}),
   mergeContent(npm.packageFile, {scripts: {postci: `size-limit`}}),
 
   mergeContent(prettier.configFile, {
@@ -39,7 +40,4 @@ writeFiles(
       {files: `*.test.tsx`, options: {printWidth: 120}},
     ],
   }),
-
-  mergeContent(swc.configFile, {jsc: {parser: {tsx: true}}}),
-  ...typescript.mergeCompilerOptions({jsx: `react`}),
 );

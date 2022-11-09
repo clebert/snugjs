@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.2.2",
-    "@onecfg/standard": "^6.5.1",
+    "@onecfg/standard": "^7.0.1",
     "@size-limit/preset-small-lib": "^8.1.0",
     "@swc/core": "^1.3.11",
     "@swc/jest": "^0.2.23",

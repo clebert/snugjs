@@ -1,5 +1,4 @@
 /** @jest-environment jsdom */
-/** @jsx createElement */
 
 import {expect, test} from '@jest/globals';
 import {createElement} from '@snugjs/html';

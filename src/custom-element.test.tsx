@@ -1,5 +1,4 @@
 /** @jest-environment jsdom */
-/** @jsx createElement */
 
 import {beforeEach, describe, expect, jest, test} from '@jest/globals';
 import {createElement} from '@snugjs/html';

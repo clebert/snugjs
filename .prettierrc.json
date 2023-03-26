@@ -1,0 +1,22 @@
+{
+  "bracketSpacing": false,
+  "overrides": [
+    {
+      "files": "**/*.test.ts",
+      "options": {
+        "printWidth": 120
+      }
+    },
+    {
+      "files": "**/*.test.tsx",
+      "options": {
+        "printWidth": 120
+      }
+    }
+  ],
+  "printWidth": 80,
+  "proseWrap": "always",
+  "quoteProps": "consistent",
+  "singleQuote": true,
+  "trailingComma": "all"
+}

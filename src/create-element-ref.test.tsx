@@ -1,9 +1,10 @@
 /** @jest-environment jsdom */
 
+import type {ElementRef} from './index.js';
+
+import {CustomElement, createElementRef} from './index.js';
 import {expect, test} from '@jest/globals';
 import {createElement} from '@snugjs/html';
-import type {ElementRef} from './index.js';
-import {CustomElement, createElementRef} from './index.js';
 
 test(`createElementRef()`, () => {
   const Custom = CustomElement.define(`x-custom`, {}, function* () {});

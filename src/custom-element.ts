@@ -1,4 +1,5 @@
 import type {ElementFactory} from '@snugjs/html';
+
 import {createElementFactory} from '@snugjs/html';
 
 export type WebComponent<TPropsSchema extends PropsSchema> = (

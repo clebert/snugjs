@@ -1,9 +1,10 @@
 /** @jest-environment jsdom */
 
+import type {SpyInstance} from 'jest-mock';
+
+import {CustomElement, createElementRef} from './index.js';
 import {beforeEach, describe, expect, jest, test} from '@jest/globals';
 import {createElement} from '@snugjs/html';
-import type {SpyInstance} from 'jest-mock';
-import {CustomElement, createElementRef} from './index.js';
 
 const VariousChildren = CustomElement.define(`x-various-children`, {}, function* () {});
 

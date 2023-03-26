@@ -1,9 +1,10 @@
-import {createElementFactory} from '@snugjs/html';
 import type {
   CustomElement,
   CustomElementFactory,
   PropsSchema,
 } from './custom-element.js';
+
+import {createElementFactory} from '@snugjs/html';
 
 export interface ElementRef<TElement> {
   readonly key: object;

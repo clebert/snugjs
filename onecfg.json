@@ -1,0 +1,54 @@
+{
+  "extends": [
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-editorconfig.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-eslint.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-git.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-jest.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-node.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-node-github.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-npm-github.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-prettier.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-swc.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-typescript.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-typescript-emit.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-typescript-eslint.json",
+    "https://raw.githubusercontent.com/clebert/onecfg-lib/main/lib/onecfg-vscode.json"
+  ],
+  "patches": {
+    ".prettierrc.json": [
+      {
+        "value": {
+          "overrides": [
+            {"files": "**/*.test.ts", "options": {"printWidth": 120}},
+            {"files": "**/*.test.tsx", "options": {"printWidth": 120}}
+          ]
+        }
+      }
+    ],
+
+    ".swcrc": [
+      {
+        "value": {
+          "jsc": {
+            "transform": {
+              "react": {
+                "pragma": "createElement",
+                "pragmaFrag": "createFragment"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "tsconfig.base.json": [
+      {
+        "value": {
+          "compilerOptions": {
+            "jsxFactory": "createElement",
+            "jsxFragmentFactory": "createFragment"
+          }
+        }
+      }
+    ]
+  }
+}

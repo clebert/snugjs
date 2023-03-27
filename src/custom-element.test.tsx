@@ -6,106 +6,143 @@ import {CustomElement, createElementRef} from './index.js';
 import {beforeEach, describe, expect, jest, test} from '@jest/globals';
 import {createElement} from '@snugjs/html';
 
-const VariousChildren = CustomElement.define(`x-various-children`, {}, function* () {});
-
-const VariousProps = CustomElement.define(
-  `x-various-props`,
-  {b1: `boolean`, b2: `boolean?`, n1: `number`, n2: `number?`, s1: `string`, s2: `string?`},
+const VariousChildren = CustomElement.define(
+  `x-various-children`,
+  {},
   function* () {},
 );
 
-const ExternalUpdate = CustomElement.define(`x-external-update`, {n: `number?`}, function* () {
-  let iteration = 0;
-  let prevChildNodes = this.syntheticChildNodes;
-  let prevProps = this.props;
+const VariousProps = CustomElement.define(
+  `x-various-props`,
+  {
+    b1: `boolean`,
+    b2: `boolean?`,
+    n1: `number`,
+    n2: `number?`,
+    s1: `string`,
+    s2: `string?`,
+  },
+  function* () {},
+);
 
-  while (true) {
-    this.replaceChildren(`#${(iteration += 1)}`);
+const ExternalUpdate = CustomElement.define(
+  `x-external-update`,
+  {n: `number?`},
+  function* () {
+    let iteration = 0;
+    let prevChildNodes = this.syntheticChildNodes;
+    let prevProps = this.props;
 
-    yield;
-
-    expect(prevChildNodes).not.toBe((prevChildNodes = this.syntheticChildNodes));
-    expect(prevProps).not.toBe((prevProps = this.props));
-  }
-});
-
-const InternalUpdate = CustomElement.define(`x-internal-update`, {}, function* ({next, signal}) {
-  let iteration = 0;
-  let state = 0;
-
-  const button = createElementRef(`button`);
-
-  button.element.addEventListener(
-    `click`,
-    () => {
-      state += 1;
-
-      next();
-    },
-    {signal},
-  );
-
-  try {
     while (true) {
-      expect(signal.aborted).toBe(false);
-
-      this.replaceChildren(`#${(iteration += 1)}: ${state}`, <button key={button.key} />);
+      this.replaceChildren(`#${(iteration += 1)}`);
 
       yield;
-    }
-  } finally {
-    expect(signal.aborted).toBe(true);
 
-    this.replaceChildren(`#${(iteration += 1)}: ${state}; disconnected`);
-  }
-});
+      expect(prevChildNodes).not.toBe(
+        (prevChildNodes = this.syntheticChildNodes),
+      );
+
+      expect(prevProps).not.toBe((prevProps = this.props));
+    }
+  },
+);
+
+const InternalUpdate = CustomElement.define(
+  `x-internal-update`,
+  {},
+  function* ({next, signal}) {
+    let iteration = 0;
+    let state = 0;
+
+    const button = createElementRef(`button`);
+
+    button.element.addEventListener(
+      `click`,
+      () => {
+        state += 1;
+
+        next();
+      },
+      {signal},
+    );
+
+    try {
+      while (true) {
+        expect(signal.aborted).toBe(false);
+
+        this.replaceChildren(
+          `#${(iteration += 1)}: ${state}`,
+          <button key={button.key} />,
+        );
+
+        yield;
+      }
+    } finally {
+      expect(signal.aborted).toBe(true);
+
+      this.replaceChildren(`#${(iteration += 1)}: ${state}; disconnected`);
+    }
+  },
+);
 
 const InitialError = CustomElement.define(`x-initial-error`, {}, function* () {
   throw new Error(`oops`);
 });
 
-const IterationError = CustomElement.define(`x-iteration-error`, {}, function* () {
-  try {
-    yield;
-  } finally {
-    throw new Error(`oops`);
-  }
-});
+const IterationError = CustomElement.define(
+  `x-iteration-error`,
+  {},
+  function* () {
+    try {
+      yield;
+    } finally {
+      throw new Error(`oops`);
+    }
+  },
+);
 
 const NoEffect = CustomElement.define(`x-no-effect`, {}, function* ({next}) {
   next();
 });
 
-const SelfRemoval = CustomElement.define(`x-self-removal`, {}, function* ({signal}) {
-  let iteration = 0;
+const SelfRemoval = CustomElement.define(
+  `x-self-removal`,
+  {},
+  function* ({signal}) {
+    let iteration = 0;
 
-  try {
-    while (true) {
-      expect(signal.aborted).toBe(false);
+    try {
+      while (true) {
+        expect(signal.aborted).toBe(false);
 
-      this.replaceChildren(`#${(iteration += 1)}: connected`);
-      this.remove();
+        this.replaceChildren(`#${(iteration += 1)}: connected`);
+        this.remove();
 
-      yield;
+        yield;
+      }
+    } finally {
+      expect(signal.aborted).toBe(true);
+
+      this.replaceChildren(`#${(iteration += 1)}: disconnected`);
     }
-  } finally {
-    expect(signal.aborted).toBe(true);
+  },
+);
 
-    this.replaceChildren(`#${(iteration += 1)}: disconnected`);
-  }
-});
+const SelfRemovalError = CustomElement.define(
+  `x-self-removal-error`,
+  {},
+  function* () {
+    try {
+      while (true) {
+        this.remove();
 
-const SelfRemovalError = CustomElement.define(`x-self-removal-error`, {}, function* () {
-  try {
-    while (true) {
-      this.remove();
-
-      yield;
+        yield;
+      }
+    } finally {
+      throw new Error(`oops`);
     }
-  } finally {
-    throw new Error(`oops`);
-  }
-});
+  },
+);
 
 describe(`CustomElement`, () => {
   let consoleError: SpyInstance;
@@ -154,22 +191,76 @@ describe(`CustomElement`, () => {
     const custom = createElementRef(VariousProps);
 
     expect(custom.element.props).toEqual({b1: false, b2: false});
-    expect(Object.keys(custom.element.props)).toEqual([`b1`, `b2`, `n1`, `n2`, `s1`, `s2`]);
+    expect(Object.keys(custom.element.props)).toEqual([
+      `b1`,
+      `b2`,
+      `n1`,
+      `n2`,
+      `s1`,
+      `s2`,
+    ]);
 
     <VariousProps key={custom.key} b1={false} n1={0} s1="" />;
 
     expect(custom.element.props).toEqual({b1: false, b2: false, n1: 0, s1: ``});
-    expect(Object.keys(custom.element.props)).toEqual([`b1`, `b2`, `n1`, `n2`, `s1`, `s2`]);
 
-    <VariousProps key={custom.key} b1={false} n1={0} s1="" b2={undefined} n2={undefined} s2={undefined} />;
+    expect(Object.keys(custom.element.props)).toEqual([
+      `b1`,
+      `b2`,
+      `n1`,
+      `n2`,
+      `s1`,
+      `s2`,
+    ]);
+
+    <VariousProps
+      key={custom.key}
+      b1={false}
+      n1={0}
+      s1=""
+      b2={undefined}
+      n2={undefined}
+      s2={undefined}
+    />;
 
     expect(custom.element.props).toEqual({b1: false, b2: false, n1: 0, s1: ``});
-    expect(Object.keys(custom.element.props)).toEqual([`b1`, `b2`, `n1`, `n2`, `s1`, `s2`]);
 
-    <VariousProps key={custom.key} b1={true} n1={1} s1="foo" b2={true} n2={2} s2="bar" />;
+    expect(Object.keys(custom.element.props)).toEqual([
+      `b1`,
+      `b2`,
+      `n1`,
+      `n2`,
+      `s1`,
+      `s2`,
+    ]);
 
-    expect(custom.element.props).toEqual({b1: true, b2: true, n1: 1, n2: 2, s1: `foo`, s2: `bar`});
-    expect(Object.keys(custom.element.props)).toEqual([`b1`, `b2`, `n1`, `n2`, `s1`, `s2`]);
+    <VariousProps
+      key={custom.key}
+      b1={true}
+      n1={1}
+      s1="foo"
+      b2={true}
+      n2={2}
+      s2="bar"
+    />;
+
+    expect(custom.element.props).toEqual({
+      b1: true,
+      b2: true,
+      n1: 1,
+      n2: 2,
+      s1: `foo`,
+      s2: `bar`,
+    });
+
+    expect(Object.keys(custom.element.props)).toEqual([
+      `b1`,
+      `b2`,
+      `n1`,
+      `n2`,
+      `s1`,
+      `s2`,
+    ]);
   });
 
   test(`updating children triggers a synchronous iteration`, () => {
